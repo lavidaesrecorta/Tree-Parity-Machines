@@ -40,14 +40,13 @@ async def stimulateTPM(request):
 
 @app.get('/calculate')
 async def calculateTPM(request):
-    uasyncio.create_task(calculate_and_send())
+    uasyncio.create_task(calculate_and_send(localTree.getResult()))
     return "Calculating output..."
 
 @app.post('/stimulate-and-calculate')
 async def stimulateTPM(request):
     stimulus_raw = request.json['stimulus']
     print("!Got stimulus:")
-    print(stimulus_raw)
     uasyncio.create_task(stimulate_and_calculate(stimulus_raw))
     return "Stimulating and calculating!"
 
@@ -67,9 +66,10 @@ def start_server():
 
 #Async functions
 async def initialize_local_machine(k,n,l):
+    global localTree
     localTree = TreeParityMachine(k,n,l)
     print("Initialized local tree: ", localTree.getWeights())
-    uasyncio.run(send_weights())
+    uasyncio.run(send_weights(localTree.getWeights()))
     return
 
 async def parse_and_set_weights(raw_weights):
@@ -80,14 +80,13 @@ async def parse_and_set_weights(raw_weights):
     return
 
 async def parse_and_stimulate(raw_stimulus):
-    # print(raw_stimulus)
+    print(raw_stimulus)
     stimulus_parsed = np.array(raw_stimulus)
     # print("Recieved stimulus: ", stimulus_parsed)
     localTree.setStimulus(stimulus_parsed)
     return
 
-async def calculate_and_send():
-    output = localTree.getResult() #HAY QUE PARSEAR LOS WEIGHTS O TIRA BAD REQUEST
+async def calculate_and_send(output):
     post_data = ujson.dumps({"ip":network_manager.get_local_ip(),"output":output})
     print("!!!Calculating")
     # print(post_data)
@@ -101,20 +100,22 @@ async def calculate_and_send():
     return
 
 async def stimulate_and_calculate(raw_stimulus):
-    uasyncio.run(parse_and_stimulate(raw_stimulus))
-    uasyncio.run(calculate_and_send())
+    stimulation_task = uasyncio.create_task(parse_and_stimulate(raw_stimulus))
+    await stimulation_task
+    output = localTree.getResult()
+    uasyncio.run(calculate_and_send(output))
     return
 
 async def learn_and_send_weights(learnRule):
     localTree.learn(learnRule)
     print("!!!Learning!")
-    uasyncio.run(send_weights())
+    uasyncio.run(send_weights(localTree.getWeights()))
     return
 
-async def send_weights():
-    weights = localTree.getWeights().tolist() #HAY QUE PARSEAR LOS WEIGHTS O TIRA BAD REQUEST
+async def send_weights(tpm_weights):
+    weights = tpm_weights.tolist() #HAY QUE PARSEAR LOS WEIGHTS O TIRA BAD REQUEST
+    # print(weights)
     post_data = ujson.dumps({"ip":network_manager.get_local_ip(),"weights":weights})
-    # print(post_data)
     url = network_manager.get_server_dir("WEIGHTS")
     try:
         req = urequests.post(url, headers = {'content-type': 'application/json'}, data = post_data)

@@ -4,7 +4,7 @@ import uasyncio
 
 def connect_to_wifi():
     wifi_ssid = "Familia Jimenez"
-    wifi_pass = ""
+    wifi_pass = "jimenez2205ji"
     sta_if = network.WLAN(network.STA_IF)
     if not sta_if.isconnected():
         print('connecting to network...')
@@ -21,6 +21,6 @@ def get_local_ip():
         return sta_if.ifconfig()[0]
 
 def get_server_dir(subdir):
-    base_ip = "http://192.168.1.92:3000/controlpanel"
+    base_ip = "http://192.168.1.128:3000/controlpanel"
     subdirectories = {"TEST": f"{base_ip}/tpm-list", "INIT": f"{base_ip}/add-tpm","WEIGHTS": f"{base_ip}/recieve-weights", "OUTPUT": f"{base_ip}/recieve-output"}
     return subdirectories[subdir]
